@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class ProfileCard extends StatelessWidget {
@@ -16,6 +17,11 @@ class ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    ImageProvider? imageProvider;
+    if (avatarUrl != null && avatarUrl!.isNotEmpty && !kDebugMode) {
+      imageProvider = NetworkImage(avatarUrl!);
+    }
+
     return Card(
       elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -25,10 +31,8 @@ class ProfileCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 30,
-              backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
-                  ? NetworkImage(avatarUrl!)
-                  : null,
-              child: avatarUrl == null || avatarUrl!.isEmpty
+              backgroundImage: imageProvider,
+              child: imageProvider == null
                   ? const Icon(Icons.person, size: 30)
                   : null,
             ),
@@ -41,7 +45,7 @@ class ProfileCard extends StatelessWidget {
                       style:
                           const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  Text('Email: $email'),
+                  Text(email),
                   Text('Age: $age'),
                 ],
               ),

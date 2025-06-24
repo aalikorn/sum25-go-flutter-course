@@ -50,37 +50,36 @@ class _RegistrationFormState extends State<RegistrationForm> {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-
               TextFormField(
+                key: const Key('name'),
                 controller: _nameController,
                 decoration: const InputDecoration(labelText: 'Name'),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Name is required';
+                    return 'Please enter your name';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 12),
-
-              // Email field
               TextFormField(
+                key: const Key('email'),
                 controller: _emailController,
                 decoration: const InputDecoration(labelText: 'Email'),
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) {
                   final emailPattern = RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$');
                   if (value == null || value.trim().isEmpty) {
-                    return 'Email is required';
+                    return 'Please enter a valid email';
                   } else if (!emailPattern.hasMatch(value)) {
-                    return 'Enter a valid email';
+                    return 'Please enter a valid email';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 12),
-
               TextFormField(
+                key: const Key('password'),
                 controller: _passwordController,
                 decoration: const InputDecoration(labelText: 'Password'),
                 obscureText: true,
@@ -92,10 +91,9 @@ class _RegistrationFormState extends State<RegistrationForm> {
                 },
               ),
               const SizedBox(height: 20),
-
               ElevatedButton(
                 onPressed: _submitForm,
-                child: const Text('Register'),
+                child: const Text('Submit'),
               ),
             ],
           ),
