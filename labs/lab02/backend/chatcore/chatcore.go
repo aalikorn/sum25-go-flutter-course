@@ -72,8 +72,13 @@ func (b *Broker) Run() {
 	}
 }
 
-// SendMessage sends a message to the broker
 func (b *Broker) SendMessage(msg Message) error {
+	select {
+	case <-b.ctx.Done():
+		return errors.New("broker context canceled")
+	default:
+	}
+
 	select {
 	case <-b.ctx.Done():
 		return errors.New("broker context canceled")
