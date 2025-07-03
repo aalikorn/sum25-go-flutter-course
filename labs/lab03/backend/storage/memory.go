@@ -96,3 +96,28 @@ var (
 	ErrMessageNotFound = errors.New("message not found")
 	ErrInvalidID       = errors.New("invalid message ID")
 )
+
+// GetAllMessages returns all messages (wrapper for GetAll)
+func (ms *MemoryStorage) GetAllMessages() ([]*models.Message, error) {
+	return ms.GetAll(), nil
+}
+
+// CreateMessage creates a new message (wrapper for Create)
+func (ms *MemoryStorage) CreateMessage(username, content string) (*models.Message, error) {
+	return ms.Create(username, content)
+}
+
+// UpdateMessage updates a message (wrapper for Update)
+func (ms *MemoryStorage) UpdateMessage(id int, content string) (*models.Message, error) {
+	return ms.Update(id, content)
+}
+
+// DeleteMessage deletes a message (wrapper for Delete)
+func (ms *MemoryStorage) DeleteMessage(id int) error {
+	return ms.Delete(id)
+}
+
+// CountMessages returns total number of messages (wrapper for Count)
+func (ms *MemoryStorage) CountMessages() (int, error) {
+	return ms.Count(), nil
+}
