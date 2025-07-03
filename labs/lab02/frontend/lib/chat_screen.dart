@@ -57,10 +57,6 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    setState(() {
-      _messages.add(text);
-    });
-
     try {
       await widget.chatService.sendMessage(text);
       _controller.clear();

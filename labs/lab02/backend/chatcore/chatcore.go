@@ -45,7 +45,7 @@ func (b *Broker) Run() {
 			if msg.Broadcast {
 				// Отправляем всем пользователям
 				b.usersMutex.RLock()
-				for userID, ch := range b.users {
+				for _, ch := range b.users {
 					// Если отправитель и получатель совпадают, то тоже отправляем (тесты требуют)
 					select {
 					case ch <- msg:

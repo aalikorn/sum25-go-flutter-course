@@ -34,7 +34,7 @@ class _UserProfileState extends State<UserProfile> {
       });
     } catch (e) {
       setState(() {
-        _error = 'Error loading user data';
+        _error = 'error: failed to load user data';
         _loading = false;
       });
     }
@@ -56,13 +56,11 @@ class _UserProfileState extends State<UserProfile> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Name: ${_userData!['name']}', style: const TextStyle(fontSize: 20)),
+          Text(_userData!['name'] ?? '', style: const TextStyle(fontSize: 20)),
           const SizedBox(height: 8),
-          Text('Email: ${_userData!['email']}', style: const TextStyle(fontSize: 16)),
+          Text(_userData!['email'] ?? '', style: const TextStyle(fontSize: 16)),
         ],
       ),
     );
   }
 }
-
-
