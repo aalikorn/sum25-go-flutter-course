@@ -162,16 +162,17 @@ class _ChatScreenState extends State<ChatScreen> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('HTTP ${status.statusCode}'),
+          title: Text('HTTP Status: ${status.statusCode}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(status.description),
               const SizedBox(height: 12),
               Image.network(
-                'https://http.cat/${status.statusCode}',
+                status.imageUrl,
                 height: 150,
-                errorBuilder: (context, error, stackTrace) => const Text('Image not found'),
+                errorBuilder: (context, error, stackTrace) =>
+                    const Text('Image not found'),
               ),
             ],
           ),
@@ -211,7 +212,6 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
       onTap: () {
-        // Randomly show one of these HTTP status codes on tap
         final codes = [200, 404, 500];
         final code = (codes..shuffle()).first;
         _showHTTPStatus(code);
@@ -219,50 +219,24 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageInput() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      color: Colors.grey.shade200,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _usernameController,
-            decoration: const InputDecoration(
-              labelText: 'Username',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _messageController,
-            decoration: const InputDecoration(
-              labelText: 'Message',
-              border: OutlineInputBorder(),
-            ),
-            maxLines: 2,
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              ElevatedButton(
-                onPressed: _sendMessage,
-                child: const Text('Send'),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: () => HTTPStatusDemo.showRandomStatus(context, _apiService),
-                child: const Text('HTTP Cat'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () => HTTPStatusDemo.showStatusPicker(context, _apiService),
-                child: const Text('Choose Status'),
-              ),
-            ],
-          )
-        ],
-      ),
+  Widget _buildMessageList() {
+    if (_messages.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Text('No messages yet', style: TextStyle(fontSize: 18)),
+            SizedBox(height: 8),
+            Text('Send your first message to get started!'),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: _messages.length,
+      itemBuilder: (context, index) => _buildMessageTile(_messages[index]),
     );
   }
 
@@ -271,7 +245,7 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error, size: 64, color: Colors.red),
+          const Icon(Icons.error_outline, size: 64, color: Colors.red),
           const SizedBox(height: 16),
           Text(
             _error ?? 'Unknown error',
@@ -288,8 +262,56 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildLoadingWidget() {
-    return const Center(child: CircularProgressIndicator());
+  Widget _buildMessageInput() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      color: Colors.grey.shade200,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _usernameController,
+            decoration: const InputDecoration(
+              labelText: 'Enter your username',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _messageController,
+            decoration: const InputDecoration(
+              labelText: 'Enter your message',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 2,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              ElevatedButton(
+                onPressed: _sendMessage,
+                child: const Text('Send'),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: () => _showHTTPStatus(200),
+                child: const Text('200 OK'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () => _showHTTPStatus(404),
+                child: const Text('404 Not Found'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () => _showHTTPStatus(500),
+                child: const Text('500 Error'),
+              ),
+            ],
+          )
+        ],
+      ),
+    );
   }
 
   @override
@@ -306,14 +328,8 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
       body: _isLoading
-          ? _buildLoadingWidget()
-          : (_error != null
-              ? _buildErrorWidget()
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: _messages.length,
-                  itemBuilder: (context, index) => _buildMessageTile(_messages[index]),
-                )),
+          ? const Center(child: CircularProgressIndicator())
+          : (_error != null ? _buildErrorWidget() : _buildMessageList()),
       bottomSheet: _buildMessageInput(),
       floatingActionButton: FloatingActionButton(
         onPressed: _loadMessages,
@@ -321,71 +337,5 @@ class _ChatScreenState extends State<ChatScreen> {
         tooltip: 'Refresh',
       ),
     );
-  }
-}
-
-class HTTPStatusDemo {
-  static final List<int> _codes = [100, 200, 201, 400, 401, 403, 404, 418, 500, 503];
-
-  static void showRandomStatus(BuildContext context, ApiService apiService) {
-    final randomCode = (_codes..shuffle()).first;
-    _showHTTPStatus(context, apiService, randomCode);
-  }
-
-  static void showStatusPicker(BuildContext context, ApiService apiService) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select HTTP Status'),
-        content: SingleChildScrollView(
-          child: Wrap(
-            spacing: 8,
-            children: _codes
-                .map((code) => ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        _showHTTPStatus(context, apiService, code);
-                      },
-                      child: Text(code.toString()),
-                    ))
-                .toList(),
-          ),
-        ),
-      ),
-    );
-  }
-
-  static Future<void> _showHTTPStatus(BuildContext context, ApiService apiService, int code) async {
-    try {
-      final status = await apiService.getHTTPStatus(code);
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('HTTP ${status.statusCode}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(status.description),
-              const SizedBox(height: 12),
-              Image.network(
-                'https://http.cat/${status.statusCode}',
-                height: 150,
-                errorBuilder: (context, error, stackTrace) => const Text('Image not found'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            )
-          ],
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading HTTP status: $e')),
-      );
-    }
   }
 }
