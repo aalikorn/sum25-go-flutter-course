@@ -8,9 +8,7 @@ class ApiService {
 
   late final http.Client _client;
 
-  ApiService() {
-    _client = http.Client();
-  }
+  ApiService({http.Client? client}) : _client = client ?? http.Client();
 
   void dispose() {
     _client.close();
