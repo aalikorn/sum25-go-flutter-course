@@ -1,8 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/message.dart';
-import '../services/api_service.dart';
+import '../models/message.dart'; // Подкорректируй путь
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({Key? key}) : super(key: key);
@@ -60,17 +59,17 @@ class _ChatScreenState extends State<ChatScreen> {
     final username = _usernameController.text.trim();
     final content = _messageController.text.trim();
 
-    if (username.isEmpty || content.isEmpty) {
+    final createRequest = CreateMessageRequest(username: username, content: content);
+    final validationError = createRequest.validate();
+    if (validationError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Username and message cannot be empty')),
+        SnackBar(content: Text(validationError)),
       );
       return;
     }
 
     try {
-      final newMessage = await _apiService.createMessage(
-        CreateMessageRequest(username: username, content: content),
-      );
+      final newMessage = await _apiService.createMessage(createRequest);
       setState(() {
         _messages.add(newMessage);
         _messageController.clear();
@@ -107,11 +106,17 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (updated == null || updated.isEmpty) return;
 
-    try {
-      final updatedMessage = await _apiService.updateMessage(
-        message.id,
-        UpdateMessageRequest(content: updated),
+    final updateRequest = UpdateMessageRequest(content: updated);
+    final validationError = updateRequest.validate();
+    if (validationError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(validationError)),
       );
+      return;
+    }
+
+    try {
+      final updatedMessage = await _apiService.updateMessage(message.id, updateRequest);
       setState(() {
         final index = _messages.indexWhere((m) => m.id == message.id);
         if (index != -1) _messages[index] = updatedMessage;
@@ -196,7 +201,7 @@ class _ChatScreenState extends State<ChatScreen> {
       leading: CircleAvatar(
         child: Text(message.username.isNotEmpty ? message.username[0].toUpperCase() : '?'),
       ),
-      title: Text('${message.username} • ${message.timestamp}'),
+      title: Text('${message.username} • ${message.timestamp.toLocal()}'),
       subtitle: Text(message.content),
       trailing: PopupMenuButton<String>(
         onSelected: (value) {
@@ -286,29 +291,32 @@ class _ChatScreenState extends State<ChatScreen> {
             maxLines: 2,
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              ElevatedButton(
-                onPressed: _sendMessage,
-                child: const Text('Send'),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: () => _showHTTPStatus(200),
-                child: const Text('200 OK'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () => _showHTTPStatus(404),
-                child: const Text('404 Not Found'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () => _showHTTPStatus(500),
-                child: const Text('500 Error'),
-              ),
-            ],
-          )
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                ElevatedButton(
+                  onPressed: _sendMessage,
+                  child: const Text('Send'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () => _showHTTPStatus(200),
+                  child: const Text('200 OK'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () => _showHTTPStatus(404),
+                  child: const Text('404 Not Found'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () => _showHTTPStatus(500),
+                  child: const Text('500 Error'),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -324,7 +332,7 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: _loadMessages,
             tooltip: 'Refresh',
-          )
+          ),
         ],
       ),
       body: _isLoading
