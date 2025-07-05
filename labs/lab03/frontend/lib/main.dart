@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/chat_screen.dart';
 import 'services/api_service.dart';
+import 'models/message.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,7 +13,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Оборачиваем в Provider, чтобы ApiService был доступен во всем дереве
     return Provider<ApiService>(
       create: (_) => ApiService(),
       dispose: (_, apiService) => apiService.dispose(),
@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
           colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue).copyWith(
-            secondary: Colors.orange, // Акцентный цвет — оранжевый
+            secondary: Colors.orange, 
           ),
           appBarTheme: const AppBarTheme(
             backgroundColor: Colors.blue,

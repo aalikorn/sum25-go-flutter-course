@@ -20,31 +20,24 @@ class Message {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'username': username,
-      'content': content,
-      'timestamp': timestamp.toIso8601String(),
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'username': username,
+        'content': content,
+        'timestamp': timestamp.toIso8601String(),
+      };
 }
 
 class CreateMessageRequest {
   final String username;
   final String content;
 
-  CreateMessageRequest({
-    required this.username,
-    required this.content,
-  });
+  CreateMessageRequest({required this.username, required this.content});
 
-  Map<String, dynamic> toJson() {
-    return {
-      'username': username,
-      'content': content,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'username': username,
+        'content': content,
+      };
 
   String? validate() {
     if (username.trim().isEmpty) return 'Username is required';
@@ -58,11 +51,9 @@ class UpdateMessageRequest {
 
   UpdateMessageRequest({required this.content});
 
-  Map<String, dynamic> toJson() {
-    return {
-      'content': content,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'content': content,
+      };
 
   String? validate() {
     if (content.trim().isEmpty) return 'Content is required';
