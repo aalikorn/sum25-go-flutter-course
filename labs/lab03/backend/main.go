@@ -10,12 +10,10 @@ import (
 )
 
 func main() {
-	// Создание хранилища и хендлера
 	store := storage.NewMemoryStorage()
 	handler := api.NewHandler(store)
 	router := handler.SetupRoutes()
 
-	// Настройки HTTP-сервера
 	server := &http.Server{
 		Addr:         ":8080",
 		Handler:      router,
@@ -24,8 +22,8 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	log.Println("[✅] Server starting on http://localhost:8080")
+	log.Println("Server starting on http://localhost:8080")
 	if err := server.ListenAndServe(); err != nil {
-		log.Fatalf("[🔥] Server failed: %v", err)
+		log.Fatalf("Server failed: %v", err)
 	}
 }
