@@ -80,7 +80,6 @@ func (h *Handler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// UpdateMessage handles PUT /api/messages/{id}
 func (h *Handler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
@@ -116,7 +115,6 @@ func (h *Handler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// DeleteMessage handles DELETE /api/messages/{id}
 func (h *Handler) DeleteMessage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
@@ -139,7 +137,6 @@ func (h *Handler) DeleteMessage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// GetHTTPStatus handles GET /api/status/{code}
 func (h *Handler) GetHTTPStatus(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	codeStr := vars["code"]
@@ -161,7 +158,6 @@ func (h *Handler) GetHTTPStatus(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// HealthCheck handles GET /api/health
 func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	count, err := h.storage.CountMessages()
 	if err != nil {
@@ -243,7 +239,6 @@ func getHTTPStatusDescription(code int) string {
 	}
 }
 
-// CORS middleware
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
