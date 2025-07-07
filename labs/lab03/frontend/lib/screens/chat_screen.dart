@@ -277,17 +277,16 @@ class _ChatScreenState extends State<ChatScreen> {
             maxLines: 2,
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              ElevatedButton(onPressed: _sendMessage, child: const Text('Send')),
-              const SizedBox(width: 12),
-              ElevatedButton(onPressed: () => _showHTTPStatus(200), child: const Text('200 OK')),
-              const SizedBox(width: 8),
-              ElevatedButton(onPressed: () => _showHTTPStatus(404), child: const Text('404 Not Found')),
-              ElevatedButton(onPressed: () => _showHTTPStatus(500), child: const Text('500 Error')),
-
-            ],
-          ),
+          Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ElevatedButton(onPressed: _sendMessage, child: const Text('Send')),
+                ElevatedButton(onPressed: () => _showHTTPStatus(200), child: const Text('200 OK')),
+                ElevatedButton(onPressed: () => _showHTTPStatus(404), child: const Text('404 Not Found')),
+                ElevatedButton(onPressed: () => _showHTTPStatus(500), child: const Text('500 Error')),
+              ],
+            ),
         ],
       ),
     );
