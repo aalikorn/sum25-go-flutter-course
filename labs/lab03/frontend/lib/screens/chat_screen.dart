@@ -56,31 +56,35 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    final username = _usernameController.text.trim();
-    final content = _messageController.text.trim();
+  final username = _usernameController.text.trim();
+  final content = _messageController.text.trim();
 
-    if (username.isEmpty || content.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Username and message cannot be empty')),
-      );
-      return;
-    }
-
-    final request = CreateMessageRequest(username: username, content: content);
-
-
-    try {
-      final newMessage = await _apiService.createMessage(request);
-      setState(() {
-        _messages.add(newMessage);
-        _messageController.clear();
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sending message: $e')),
-      );
-    }
+  if (username.isEmpty || content.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Username and message cannot be empty')),
+    );
+    return;
   }
+
+  final request = CreateMessageRequest(username: username, content: content);
+
+  try {
+    final newMessage = await _apiService.createMessage(request);
+    setState(() {
+      _messages.add(newMessage);
+      _messageController.clear();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Message sent successfully')),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error sending message: $e')),
+    );
+  }
+}
+
 
   Future<void> _editMessage(Message message) async {
     final controller = TextEditingController(text: message.content);
@@ -161,7 +165,7 @@ class _ChatScreenState extends State<ChatScreen> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('HTTP ${status.statusCode}'),
+          title: Text('HTTP Status: ${status.statusCode}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -279,9 +283,9 @@ class _ChatScreenState extends State<ChatScreen> {
               const SizedBox(width: 12),
               ElevatedButton(onPressed: () => _showHTTPStatus(200), child: const Text('200 OK')),
               const SizedBox(width: 8),
-              ElevatedButton(onPressed: () => _showHTTPStatus(404), child: const Text('404')),
-              const SizedBox(width: 8),
-              ElevatedButton(onPressed: () => _showHTTPStatus(500), child: const Text('500')),
+              ElevatedButton(onPressed: () => _showHTTPStatus(404), child: const Text('404 Not Found')),
+              ElevatedButton(onPressed: () => _showHTTPStatus(500), child: const Text('500 Error')),
+
             ],
           ),
         ],
