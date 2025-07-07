@@ -21,7 +21,6 @@ class ApiService {
     };
   }
 
-  // Универсальная обработка ответа с декодированием JSON и маппингом в нужный тип
   Future<T> _handleResponse<T>(
       http.Response response, T Function(Map<String, dynamic>) fromJson) async {
     final status = response.statusCode;

@@ -1,8 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/message.dart'; // Подкорректируй путь
-
+import '../models/message.dart'; 
+import '../services/api_service.dart'; 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({Key? key}) : super(key: key);
 
@@ -59,17 +59,18 @@ class _ChatScreenState extends State<ChatScreen> {
     final username = _usernameController.text.trim();
     final content = _messageController.text.trim();
 
-    final createRequest = CreateMessageRequest(username: username, content: content);
-    final validationError = createRequest.validate();
-    if (validationError != null) {
+    if (username.isEmpty || content.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(validationError)),
+        const SnackBar(content: Text('Username and message cannot be empty')),
       );
       return;
     }
 
+    final request = CreateMessageRequest(username: username, content: content);
+
+
     try {
-      final newMessage = await _apiService.createMessage(createRequest);
+      final newMessage = await _apiService.createMessage(request);
       setState(() {
         _messages.add(newMessage);
         _messageController.clear();
@@ -83,7 +84,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _editMessage(Message message) async {
     final controller = TextEditingController(text: message.content);
-    final updated = await showDialog<String>(
+    final updatedContent = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Edit Message'),
@@ -104,19 +105,12 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
 
-    if (updated == null || updated.isEmpty) return;
+    if (updatedContent == null || updatedContent.isEmpty) return;
 
-    final updateRequest = UpdateMessageRequest(content: updated);
-    final validationError = updateRequest.validate();
-    if (validationError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(validationError)),
-      );
-      return;
-    }
+    final request = UpdateMessageRequest(content: updatedContent);
 
     try {
-      final updatedMessage = await _apiService.updateMessage(message.id, updateRequest);
+      final updatedMessage = await _apiService.updateMessage(message.id, request);
       setState(() {
         final index = _messages.indexWhere((m) => m.id == message.id);
         if (index != -1) _messages[index] = updatedMessage;
@@ -167,7 +161,7 @@ class _ChatScreenState extends State<ChatScreen> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('HTTP Status: ${status.statusCode}'),
+          title: Text('HTTP ${status.statusCode}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -176,8 +170,7 @@ class _ChatScreenState extends State<ChatScreen> {
               Image.network(
                 status.imageUrl,
                 height: 150,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Text('Image not found'),
+                errorBuilder: (context, error, stackTrace) => const Text('Image not found'),
               ),
             ],
           ),
@@ -185,7 +178,7 @@ class _ChatScreenState extends State<ChatScreen> {
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Close'),
-            )
+            ),
           ],
         ),
       );
@@ -205,11 +198,8 @@ class _ChatScreenState extends State<ChatScreen> {
       subtitle: Text(message.content),
       trailing: PopupMenuButton<String>(
         onSelected: (value) {
-          if (value == 'edit') {
-            _editMessage(message);
-          } else if (value == 'delete') {
-            _deleteMessage(message);
-          }
+          if (value == 'edit') _editMessage(message);
+          if (value == 'delete') _deleteMessage(message);
         },
         itemBuilder: (context) => [
           const PopupMenuItem(value: 'edit', child: Text('Edit')),
@@ -217,19 +207,18 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
       onTap: () {
-        final codes = [200, 404, 500];
-        final code = (codes..shuffle()).first;
-        _showHTTPStatus(code);
+        final codes = [200, 404, 500]..shuffle();
+        _showHTTPStatus(codes.first);
       },
     );
   }
 
   Widget _buildMessageList() {
     if (_messages.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: const [
+          children: [
             Text('No messages yet', style: TextStyle(fontSize: 18)),
             SizedBox(height: 8),
             Text('Send your first message to get started!'),
@@ -252,16 +241,9 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           const Icon(Icons.error_outline, size: 64, color: Colors.red),
           const SizedBox(height: 16),
-          Text(
-            _error ?? 'Unknown error',
-            style: const TextStyle(color: Colors.red, fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
+          Text(_error ?? 'Unknown error', style: const TextStyle(color: Colors.red, fontSize: 16)),
           const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _loadMessages,
-            child: const Text('Retry'),
-          ),
+          ElevatedButton(onPressed: _loadMessages, child: const Text('Retry')),
         ],
       ),
     );
@@ -291,31 +273,16 @@ class _ChatScreenState extends State<ChatScreen> {
             maxLines: 2,
           ),
           const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                ElevatedButton(
-                  onPressed: _sendMessage,
-                  child: const Text('Send'),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: () => _showHTTPStatus(200),
-                  child: const Text('200 OK'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => _showHTTPStatus(404),
-                  child: const Text('404 Not Found'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => _showHTTPStatus(500),
-                  child: const Text('500 Error'),
-                ),
-              ],
-            ),
+          Row(
+            children: [
+              ElevatedButton(onPressed: _sendMessage, child: const Text('Send')),
+              const SizedBox(width: 12),
+              ElevatedButton(onPressed: () => _showHTTPStatus(200), child: const Text('200 OK')),
+              const SizedBox(width: 8),
+              ElevatedButton(onPressed: () => _showHTTPStatus(404), child: const Text('404')),
+              const SizedBox(width: 8),
+              ElevatedButton(onPressed: () => _showHTTPStatus(500), child: const Text('500')),
+            ],
           ),
         ],
       ),
@@ -331,7 +298,6 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadMessages,
-            tooltip: 'Refresh',
           ),
         ],
       ),
@@ -342,7 +308,6 @@ class _ChatScreenState extends State<ChatScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _loadMessages,
         child: const Icon(Icons.refresh),
-        tooltip: 'Refresh',
       ),
     );
   }
