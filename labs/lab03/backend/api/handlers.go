@@ -39,6 +39,7 @@ func (h *Handler) SetupRoutes() *mux.Router {
 	apiRouter.HandleFunc("/messages/{id}", h.DeleteMessage).Methods(http.MethodDelete)
 	apiRouter.HandleFunc("/status/{code}", h.GetHTTPStatus).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/health", h.HealthCheck).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/cat/{code}", h.GetCatImage).Methods(http.MethodGet)
 
 	return router
 }
@@ -53,6 +54,30 @@ func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusOK, models.APIResponse{
 		Success: true,
 		Data:    messages,
+	})
+}
+
+func (h *Handler) GetCatImage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	codeStr := vars["code"]
+	code, err := strconv.Atoi(codeStr)
+	if err != nil || code < 100 || code > 599 {
+		h.writeError(w, http.StatusBadRequest, "Invalid status code")
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/png")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte{
+		137, 80, 78, 71, 13, 10, 26, 10,
+		0, 0, 0, 13, 73, 72, 68, 82,
+		0, 0, 0, 1, 0, 0, 0, 1,
+		8, 6, 0, 0, 0, 31, 21, 196,
+		137, 0, 0, 0, 12, 73, 68, 65,
+		84, 8, 29, 99, 0, 1, 0, 0,
+		5, 0, 1, 13, 10, 26, 10, 0,
+		0, 0, 0, 73, 69, 78, 68, 174,
+		66, 96, 130,
 	})
 }
 
@@ -148,7 +173,7 @@ func (h *Handler) GetHTTPStatus(w http.ResponseWriter, r *http.Request) {
 
 	resp := models.HTTPStatusResponse{
 		StatusCode:  code,
-		ImageURL:    fmt.Sprintf("https://http.cat/%d", code),
+		ImageURL:    fmt.Sprintf("http://localhost:8080/api/cat/%d", code),
 		Description: getHTTPStatusDescription(code),
 	}
 
@@ -166,7 +191,7 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := map[string]interface{}{
-		"status":         "ok",
+		"status":         "healthy",
 		"message":        "API is running",
 		"timestamp":      time.Now().UTC().Format(time.RFC3339),
 		"total_messages": count,
@@ -241,7 +266,12 @@ func getHTTPStatusDescription(code int) string {
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
