@@ -1,359 +1,314 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import '../lib/models/message.dart';
-import '../lib/services/api_service.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'dart:convert';
 
-class ChatScreen extends StatefulWidget {
-  const ChatScreen({Key? key}) : super(key: key);
+import 'package:lab03_frontend/screens/chat_screen.dart';
+import 'package:lab03_frontend/services/api_service.dart';
+import 'package:lab03_frontend/main.dart';
+import 'package:lab03_frontend/models/message.dart';
 
-  @override
-  State<ChatScreen> createState() => _ChatScreenState();
-}
+void main() {
+  group('ChatScreen Widget Tests', () {
+    late ApiService mockApiService;
 
-class _ChatScreenState extends State<ChatScreen> {
-  late final ApiService _apiService;
-  List<Message> _messages = [];
-  bool _isLoading = false;
-  String? _error;
-
-  final TextEditingController _usernameController = TextEditingController();
-  final TextEditingController _messageController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    // Получаем ApiService из Provider, без слушания обновлений
-    _apiService = Provider.of<ApiService>(context, listen: false);
-    _loadMessages();
-  }
-
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _messageController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadMessages() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
+    setUp(() {
+      mockApiService = ApiService();
     });
 
-    try {
-      final messages = await _apiService.getMessages();
-      setState(() {
-        _messages = messages;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
+    tearDown(() {
+      mockApiService.dispose();
+    });
+
+    // Helper function to create mock client
+    MockClient _createMockClient() {
+      return MockClient((request) async {
+        if (request.url.toString() == 'http://localhost:8080/api/messages' &&
+            request.method == 'GET') {
+          final response = {
+            'success': true,
+            'data': [
+              {
+                'id': 1,
+                'username': 'testuser',
+                'content': 'test message',
+                'timestamp': '2024-01-01T00:00:00.000Z'
+              }
+            ]
+          };
+          return http.Response(jsonEncode(response), 200);
+        }
+        if (request.url.toString() == 'http://localhost:8080/api/messages' &&
+            request.method == 'POST') {
+          final response = {
+            'success': true,
+            'data': {
+              'id': 2,
+              'username': 'integrationtest',
+              'content': 'Test message from integration test',
+              'timestamp': '2024-01-01T00:00:00.000Z'
+            }
+          };
+          return http.Response(jsonEncode(response), 201);
+        }
+        if (request.url.toString() == 'http://localhost:8080/api/status/200') {
+          final response = {
+            'success': true,
+            'data': {
+              'status_code': 200,
+              'image_url': 'http://localhost:8080/api/cat/200',
+              'description': 'OK'
+            }
+          };
+          return http.Response(jsonEncode(response), 200);
+        }
+        if (request.url.toString() == 'http://localhost:8080/api/status/404') {
+          final response = {
+            'success': true,
+            'data': {
+              'status_code': 404,
+              'image_url': 'http://localhost:8080/api/cat/404',
+              'description': 'Not Found'
+            }
+          };
+          return http.Response(jsonEncode(response), 200);
+        }
+        return http.Response('Not Found', 404);
       });
     }
-  }
 
-  Future<void> _sendMessage() async {
-    final username = _usernameController.text.trim();
-    final content = _messageController.text.trim();
-
-    if (username.isEmpty || content.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Username and message cannot be empty')),
-      );
-      return;
-    }
-
-    try {
-      final newMessage = await _apiService.createMessage(
-        CreateMessageRequest(username: username, content: content),
-      );
-      setState(() {
-        _messages.add(newMessage);
-        _messageController.clear();
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Message sent')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sending message: $e')),
-      );
-    }
-  }
-
-  Future<void> _editMessage(Message message) async {
-    final controller = TextEditingController(text: message.content);
-    final updated = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Message'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'Content'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(null),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-
-    if (updated == null || updated.isEmpty) return;
-
-    try {
-      final updatedMessage = await _apiService.updateMessage(
-        message.id,
-        UpdateMessageRequest(content: updated),
-      );
-      setState(() {
-        final index = _messages.indexWhere((m) => m.id == message.id);
-        if (index != -1) _messages[index] = updatedMessage;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Message updated')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating message: $e')),
-      );
-    }
-  }
-
-  Future<void> _deleteMessage(Message message) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Message'),
-        content: const Text('Are you sure you want to delete this message?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('No'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Yes'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await _apiService.deleteMessage(message.id);
-      setState(() {
-        _messages.removeWhere((m) => m.id == message.id);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Message deleted')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting message: $e')),
-      );
-    }
-  }
-
-  Future<void> _showHTTPStatus(int statusCode) async {
-    try {
-      final status = await _apiService.getHTTPStatus(statusCode);
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('HTTP Status: ${status.statusCode}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(status.description),
-              const SizedBox(height: 12),
-              Image.network(
-                status.imageUrl,
-                height: 150,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Text('Image not found'),
+    // MOCK TESTS
+    group('Mock Tests', () {
+      testWidgets('should display chat screen with proper UI elements',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              Provider<ApiService>(
+                create: (_) => ApiService(client: _createMockClient()),
+                dispose: (_, apiService) => apiService.dispose(),
+              ),
+              ChangeNotifierProxyProvider<ApiService, ChatProvider>(
+                create: (context) => ChatProvider(
+                  Provider.of<ApiService>(context, listen: false),
+                ),
+                update: (context, apiService, previous) =>
+                    previous ?? ChatProvider(apiService),
               ),
             ],
+            child: const MaterialApp(
+              home: ChatScreen(),
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            )
-          ],
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading HTTP status: $e')),
-      );
-    }
-  }
+        );
 
-  Widget _buildMessageTile(Message message) {
-    return ListTile(
-      leading: CircleAvatar(
-        child: Text(
-          message.username.isNotEmpty
-              ? message.username[0].toUpperCase()
-              : '?',
-        ),
-      ),
-      title: Text('${message.username} • ${message.timestamp}'),
-      subtitle: Text(message.content),
-      trailing: PopupMenuButton<String>(
-        onSelected: (value) {
-          if (value == 'edit') {
-            _editMessage(message);
-          } else if (value == 'delete') {
-            _deleteMessage(message);
+        // Wait for messages to load
+        await tester.pumpAndSettle();
+
+        // Should have app bar
+        expect(find.byType(AppBar), findsOneWidget);
+        expect(find.text('REST API Chat'), findsOneWidget);
+
+        // Should have input fields
+        expect(find.byType(TextField), findsNWidgets(2));
+        expect(find.text('Enter your username'), findsOneWidget);
+        expect(find.text('Enter your message'), findsOneWidget);
+
+        // Should have HTTP status buttons
+        expect(find.text('200 OK'), findsOneWidget);
+        expect(find.text('404 Not Found'), findsOneWidget);
+        expect(find.text('500 Error'), findsOneWidget);
+
+        // Should have send button
+        expect(find.text('Send'), findsOneWidget);
+
+        // Should have refresh buttons
+        expect(find.byIcon(Icons.refresh), findsNWidgets(2)); // App bar + FAB
+
+        // Should have floating action button
+        expect(find.byType(FloatingActionButton), findsOneWidget);
+      });
+
+      testWidgets('should send message and update UI',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              Provider<ApiService>(
+                create: (_) => ApiService(client: _createMockClient()),
+                dispose: (_, apiService) => apiService.dispose(),
+              ),
+              ChangeNotifierProxyProvider<ApiService, ChatProvider>(
+                create: (context) => ChatProvider(
+                  Provider.of<ApiService>(context, listen: false),
+                ),
+                update: (context, apiService, previous) =>
+                    previous ?? ChatProvider(apiService),
+              ),
+            ],
+            child: const MaterialApp(
+              home: ChatScreen(),
+            ),
+          ),
+        );
+
+        // Wait for initial load
+        await tester.pumpAndSettle();
+
+        // Find username and message input fields
+        final usernameField = find.byType(TextField).first;
+        final messageField = find.byType(TextField).at(1);
+        final sendButton = find.text('Send');
+
+        // Enter username and message
+        await tester.enterText(usernameField, 'integrationtest');
+        await tester.enterText(
+            messageField, 'Test message from integration test');
+        await tester.pump();
+
+        // Tap send button
+        await tester.tap(sendButton);
+        await tester.pumpAndSettle();
+
+        // Should show success message
+        expect(find.byType(SnackBar), findsOneWidget);
+      });
+
+      testWidgets('should show HTTP status dialogs when buttons are pressed',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              Provider<ApiService>(
+                create: (_) => ApiService(client: _createMockClient()),
+                dispose: (_, apiService) => apiService.dispose(),
+              ),
+              ChangeNotifierProxyProvider<ApiService, ChatProvider>(
+                create: (context) => ChatProvider(
+                  Provider.of<ApiService>(context, listen: false),
+                ),
+                update: (context, apiService, previous) =>
+                    previous ?? ChatProvider(apiService),
+              ),
+            ],
+            child: const MaterialApp(
+              home: ChatScreen(),
+            ),
+          ),
+        );
+
+        // Wait for initial load
+        await tester.pumpAndSettle();
+
+        // Find and tap HTTP status buttons
+        final status200Button = find.text('200 OK');
+        final status404Button = find.text('404 Not Found');
+
+        expect(status200Button, findsOneWidget);
+        expect(status404Button, findsOneWidget);
+
+        // Tap 200 OK button
+        await tester.tap(status200Button);
+        await tester.pumpAndSettle();
+
+        // Should show dialog with HTTP status
+        expect(find.byType(AlertDialog), findsOneWidget);
+        expect(find.text('HTTP Status: 200'), findsOneWidget);
+        expect(find.text('OK'), findsOneWidget);
+
+        // Close dialog
+        await tester.tap(find.text('Close'));
+        await tester.pumpAndSettle();
+
+        // Tap 404 button
+        await tester.tap(status404Button);
+        await tester.pumpAndSettle();
+
+        // Should show dialog with 404 status
+        expect(find.byType(AlertDialog), findsOneWidget);
+        expect(find.text('HTTP Status: 404'), findsOneWidget);
+        expect(find.text('Not Found'), findsOneWidget);
+      });
+
+      testWidgets('should display error message when API fails',
+          (WidgetTester tester) async {
+        // Create a mock client that returns error
+        final errorMockClient = MockClient((request) async {
+          return http.Response('Server Error', 500);
+        });
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              Provider<ApiService>(
+                create: (_) => ApiService(client: errorMockClient),
+                dispose: (_, apiService) => apiService.dispose(),
+              ),
+              ChangeNotifierProxyProvider<ApiService, ChatProvider>(
+                create: (context) => ChatProvider(
+                  Provider.of<ApiService>(context, listen: false),
+                ),
+                update: (context, apiService, previous) =>
+                    previous ?? ChatProvider(apiService),
+              ),
+            ],
+            child: const MaterialApp(
+              home: ChatScreen(),
+            ),
+          ),
+        );
+
+        // Wait for error to appear
+        await tester.pumpAndSettle();
+
+        // Should show error widget
+        expect(find.byIcon(Icons.error_outline), findsOneWidget);
+        expect(find.text('Retry'), findsOneWidget);
+      });
+
+      testWidgets('should display empty state when no messages',
+          (WidgetTester tester) async {
+        // Create a mock client that returns empty messages
+        final emptyMockClient = MockClient((request) async {
+          if (request.url.toString() == 'http://localhost:8080/api/messages' &&
+              request.method == 'GET') {
+            final response = {'success': true, 'data': []};
+            return http.Response(jsonEncode(response), 200);
           }
-        },
-        itemBuilder: (context) => [
-          const PopupMenuItem(value: 'edit', child: Text('Edit')),
-          const PopupMenuItem(value: 'delete', child: Text('Delete')),
-        ],
-      ),
-      onTap: () {
-        final codes = [200, 404, 500];
-        final code = (codes..shuffle()).first;
-        _showHTTPStatus(code);
-      },
-    );
-  }
+          return http.Response('Not Found', 404);
+        });
 
-  Widget _buildMessageList() {
-    if (_messages.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Text('No messages yet', style: TextStyle(fontSize: 18)),
-            SizedBox(height: 8),
-            Text('Send your first message to get started!'),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: _messages.length,
-      itemBuilder: (context, index) => _buildMessageTile(_messages[index]),
-    );
-  }
-
-  Widget _buildErrorWidget() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
-          const SizedBox(height: 16),
-          Text(
-            _error ?? 'Unknown error',
-            style: const TextStyle(color: Colors.red, fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _loadMessages,
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMessageInput() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      color: Colors.grey.shade200,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _usernameController,
-            decoration: const InputDecoration(
-              labelText: 'Enter your username',
-              border: OutlineInputBorder(),
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              Provider<ApiService>(
+                create: (_) => ApiService(client: emptyMockClient),
+                dispose: (_, apiService) => apiService.dispose(),
+              ),
+              ChangeNotifierProxyProvider<ApiService, ChatProvider>(
+                create: (context) => ChatProvider(
+                  Provider.of<ApiService>(context, listen: false),
+                ),
+                update: (context, apiService, previous) =>
+                    previous ?? ChatProvider(apiService),
+              ),
+            ],
+            child: const MaterialApp(
+              home: ChatScreen(),
             ),
           ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _messageController,
-            decoration: const InputDecoration(
-              labelText: 'Enter your message',
-              border: OutlineInputBorder(),
-            ),
-            maxLines: 2,
-          ),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                ElevatedButton(
-                  onPressed: _sendMessage,
-                  child: const Text('Send'),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: () => _showHTTPStatus(200),
-                  child: const Text('200 OK'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => _showHTTPStatus(404),
-                  child: const Text('404 Not Found'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => _showHTTPStatus(500),
-                  child: const Text('500 Error'),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        );
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('REST API Chat'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadMessages,
-            tooltip: 'Refresh',
-          )
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : (_error != null ? _buildErrorWidget() : _buildMessageList()),
-      bottomSheet: _buildMessageInput(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _loadMessages,
-        child: const Icon(Icons.refresh),
-        tooltip: 'Refresh',
-      ),
-    );
-  }
+        // Wait for messages to load
+        await tester.pumpAndSettle();
+
+        // Should show empty state
+        expect(find.text('No messages yet'), findsOneWidget);
+        expect(find.text('Send your first message to get started!'),
+            findsOneWidget);
+      });
+    });
+  });
 }
