@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"lab04-backend/models"
 )
@@ -23,14 +24,15 @@ func (r *UserRepository) Create(req *models.CreateUserRequest) (*models.User, er
 		return nil, fmt.Errorf("name and email are required")
 	}
 
+	now := time.Now()
 	query := `
 		INSERT INTO users (name, email, created_at, updated_at)
-		VALUES ($1, $2, NOW(), NOW())
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, name, email, created_at, updated_at
 	`
 
 	user := &models.User{}
-	err := r.db.QueryRow(query, req.Name, req.Email).Scan(
+	err := r.db.QueryRow(query, req.Name, req.Email, now, now).Scan(
 		&user.ID, &user.Name, &user.Email, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
@@ -119,8 +121,10 @@ func (r *UserRepository) Update(id int, req *models.UpdateUserRequest) (*models.
 		return nil, fmt.Errorf("no fields to update")
 	}
 
-	// Always update updated_at
-	setClauses = append(setClauses, fmt.Sprintf("updated_at = NOW()"))
+	// Always update updated_at with current time
+	setClauses = append(setClauses, fmt.Sprintf("updated_at = $%d", argPos))
+	args = append(args, time.Now())
+	argPos++
 
 	query := fmt.Sprintf(`
 		UPDATE users SET %s WHERE id = $%d

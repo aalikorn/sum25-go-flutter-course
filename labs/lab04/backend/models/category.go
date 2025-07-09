@@ -10,6 +10,12 @@ import (
 	"gorm.io/gorm"
 )
 
+type CreateCategoryRequest struct {
+	Name        string `json:"name" validate:"required,min=2,max=100"`
+	Description string `json:"description" validate:"max=500"`
+	Color       string `json:"color" validate:"omitempty,hexcolor"`
+}
+
 // Category represents a blog post category using GORM model conventions
 type Category struct {
 	ID          uint           `json:"id" gorm:"primaryKey"`

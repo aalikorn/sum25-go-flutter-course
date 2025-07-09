@@ -52,7 +52,8 @@ func (r *CategoryRepository) FindByName(name string) (*models.Category, error) {
 
 func (r *CategoryRepository) SearchCategories(query string, limit int) ([]models.Category, error) {
 	var categories []models.Category
-	err := r.db.Where("name LIKE ?", "%"+query+"%").
+	err := r.db.
+		Where("name LIKE ?", "%"+query+"%").
 		Order("name").
 		Limit(limit).
 		Find(&categories).Error

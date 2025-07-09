@@ -48,8 +48,8 @@ func (s *SearchService) SearchPosts(ctx context.Context, filters SearchFilters) 
 	if filters.Query != "" {
 		searchTerm := "%" + filters.Query + "%"
 		query = query.Where(squirrel.Or{
-			squirrel.ILike{"title": searchTerm},
-			squirrel.ILike{"content": searchTerm},
+			squirrel.Like{"LOWER(title)": strings.ToLower(searchTerm)},
+			squirrel.Like{"LOWER(content)": strings.ToLower(searchTerm)},
 		})
 	}
 	if filters.UserID != nil {
@@ -101,7 +101,7 @@ func (s *SearchService) SearchUsers(ctx context.Context, nameQuery string, limit
 	}
 	query := s.psql.Select("id", "name", "email", "created_at", "updated_at").
 		From("users").
-		Where(squirrel.ILike{"name": "%" + nameQuery + "%"}).
+		Where("LOWER(name) LIKE ?", "%"+strings.ToLower(nameQuery)+"%").
 		OrderBy("name ASC").
 		Limit(uint64(limit))
 
@@ -155,8 +155,8 @@ func (s *SearchService) BuildDynamicQuery(baseQuery squirrel.SelectBuilder, filt
 	if filters.Query != "" {
 		searchTerm := "%" + filters.Query + "%"
 		query = query.Where(squirrel.Or{
-			squirrel.ILike{"title": searchTerm},
-			squirrel.ILike{"content": searchTerm},
+			squirrel.Like{"LOWER(title)": strings.ToLower(searchTerm)},
+			squirrel.Like{"LOWER(content)": strings.ToLower(searchTerm)},
 		})
 	}
 
@@ -210,7 +210,7 @@ func (s *SearchService) GetTopUsers(ctx context.Context, limit int) ([]UserWithS
 // UserWithStats represents a user with post statistics
 type UserWithStats struct {
 	models.User
-	PostCount      int    `db:"post_count"`
-	PublishedCount int    `db:"published_count"`
-	LastPostDate   string `db:"last_post_date"`
+	PostCount      int          `db:"post_count"`
+	PublishedCount int          `db:"published_count"`
+	LastPostDate   sql.NullTime `db:"last_post_date"`
 }

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/pressly/goose/v3"
 )

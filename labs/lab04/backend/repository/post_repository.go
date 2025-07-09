@@ -25,15 +25,17 @@ func (r *PostRepository) Create(req *models.CreatePostRequest) (*models.Post, er
 		return nil, err
 	}
 
+	now := time.Now()
+
 	query := `
 		INSERT INTO posts (user_id, title, content, published, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, NOW(), NOW())
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, user_id, title, content, published, created_at, updated_at
 	`
 
 	var post models.Post
 	err := sqlscan.Get(context.Background(), r.db, &post, query,
-		req.UserID, req.Title, req.Content, req.Published)
+		req.UserID, req.Title, req.Content, req.Published, now, now)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create post: %w", err)
 	}
@@ -85,7 +87,6 @@ func (r *PostRepository) GetAll() ([]models.Post, error) {
 }
 
 func (r *PostRepository) Update(id int, req *models.UpdatePostRequest) (*models.Post, error) {
-	// Build dynamic SET clauses for non-nil fields
 	setClauses := []string{}
 	args := []interface{}{}
 	argPos := 1
@@ -109,7 +110,6 @@ func (r *PostRepository) Update(id int, req *models.UpdatePostRequest) (*models.
 		return nil, fmt.Errorf("no fields to update")
 	}
 
-	// Always update updated_at
 	setClauses = append(setClauses, fmt.Sprintf("updated_at = $%d", argPos))
 	args = append(args, time.Now())
 	argPos++
